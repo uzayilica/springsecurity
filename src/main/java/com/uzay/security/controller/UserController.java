@@ -6,6 +6,7 @@ import com.uzay.security.modal.Roles;
 import com.uzay.security.modal.User;
 import com.uzay.security.repository.UserRepository;
 import com.uzay.security.service.MyUserDetailsService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -57,38 +58,35 @@ public class UserController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<?>Login(@RequestBody User user){
+    public ResponseEntity<?> login(@RequestBody User user) {
         try {
-            //önce kullanıcı adı var mı diye bakalım varsa şifreye bakalım
+            // Kullanıcıyı bulma
             UserDetails userDetails = myUserDetailsService.loadUserByUsername(user.getUsername());
 
-            //tamam var şimdi şifreye bakalım
-
-            if(passwordEncoder.matches(user.getPassword(),userDetails.getPassword())){
-                //giriş başarılı
-                //token oluştur contexte ekle
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            // Şifre doğrulama
+            if (passwordEncoder.matches(user.getPassword(), userDetails.getPassword())) {
+                // Giriş başarılı, token oluşturma
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
 
-                // tokeni üretelim
+                // Token oluşturma
                 String token = jwtService.generateToken(userDetails);
 
-                return ResponseEntity.ok().body(token);
+                return ResponseEntity.ok(token);
+            } else {
+                // Şifre hatalı
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Şifre hatalı");
             }
-            else {
-                return ResponseEntity.ok().body("şifre hatalı");
-            }
+        } catch (UsernameNotFoundException e) {
+            // Kullanıcı bulunamadı
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kullanıcı bulunamadı");
+        } catch (Exception e) {
+            // Bilinmeyen hata
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Bilinmeyen bir hata oluştu");
         }
-
-catch (UsernameNotFoundException e) {
-            return ResponseEntity.ok().body("kullanıcı bulunumadı");
-}
-        catch (Exception e) {
-
-            return ResponseEntity.ok().body("bilinmeyen bir hata olun");
-        }
-
     }
+
 
 
 
